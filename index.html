@@ -13,6 +13,7 @@
 </head>
 <body class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
   <div class="max-w-md mx-auto bg-white rounded-2xl shadow-xl overflow-hidden">
+
     <!-- Header -->
     <div class="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white">
       <div class="flex items-center gap-3">
@@ -26,6 +27,19 @@
           <p class="text-blue-100 text-sm">Autoatendimento</p>
         </div>
       </div>
+    </div>
+
+    <!-- Nome -->
+    <div class="p-6 border-b border-gray-200">
+      <label class="block">
+        <span class="text-sm font-semibold text-gray-700">Seu nome (opcional)</span>
+        <input
+          type="text"
+          id="nome"
+          placeholder="Ex: João"
+          class="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-800 focus:border-blue-500 focus:outline-none"
+        />
+      </label>
     </div>
 
     <!-- Products -->
@@ -124,7 +138,7 @@
           <div class="flex items-center gap-3">
             <button
               onclick="updateQuantity('${product.id}', -1)"
-              class="w-10 h-10 bg-red-500 hover:bg-red-600 text-white rounded-lg font-bold text-xl flex items-center justify-center transition-colors"
+              class="w-10 h-10 bg-red-500 hover:bg-red-600 text-white rounded-lg font-bold text-xl flex items-center justify-center"
             >−</button>
             <input
               type="number"
@@ -136,7 +150,7 @@
             />
             <button
               onclick="updateQuantity('${product.id}', 1)"
-              class="w-10 h-10 bg-green-500 hover:bg-green-600 text-white rounded-lg font-bold text-xl flex items-center justify-center transition-colors"
+              class="w-10 h-10 bg-green-500 hover:bg-green-600 text-white rounded-lg font-bold text-xl flex items-center justify-center"
             >+</button>
           </div>
         </div>
@@ -144,21 +158,15 @@
     }
 
     document.getElementById('copyBtn').addEventListener('click', () => {
-      const pixKey = document.getElementById('pixKey').value;
-      navigator.clipboard.writeText(pixKey).then(() => {
-        const btn = document.getElementById('copyBtn');
-        btn.textContent = 'Copiado!';
-        setTimeout(() => btn.textContent = 'Copiar', 2000);
-      });
+      navigator.clipboard.writeText(document.getElementById('pixKey').value);
+      const btn = document.getElementById('copyBtn');
+      btn.textContent = 'Copiado!';
+      setTimeout(() => btn.textContent = 'Copiar', 2000);
     });
 
     document.getElementById('finalizarBtn').addEventListener('click', async () => {
       const total = products.reduce((sum, p) => sum + (p.price * quantities[p.id]), 0);
-      
-      if (total === 0) {
-        alert('Adicione pelo menos um produto ao pedido');
-        return;
-      }
+      if (total === 0) return;
 
       const btn = document.getElementById('finalizarBtn');
       btn.disabled = true;
@@ -166,6 +174,7 @@
 
       const pedido = {
         timestamp: new Date().toISOString(),
+        nome: document.getElementById('nome').value || '',
         energetico: quantities.energetico,
         refrigerante: quantities.refrigerante,
         isotonico: quantities.isotonico,
@@ -176,25 +185,23 @@
       try {
         const response = await fetch(APPS_SCRIPT_URL, {
           method: 'POST',
-          mode: 'cors',
-          headers: { 'Content-Type': 'text/plain' },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(pedido)
         });
 
         const result = await response.json();
-        
+
         if (result.success) {
           alert('Pedido registrado com sucesso!');
-          Object.keys(quantities).forEach(key => quantities[key] = 0);
+          document.getElementById('nome').value = '';
+          Object.keys(quantities).forEach(k => quantities[k] = 0);
           renderProducts();
           updateTotals();
         } else {
-          alert('Erro ao registrar pedido: ' + result.error);
+          alert('Erro: ' + result.error);
         }
       } catch (error) {
-        console.error('Erro completo:', error);
-        console.error('Mensagem:', error.message);
-        alert('Erro ao enviar pedido: ' + error.message);
+        alert('Erro ao enviar pedido');
       } finally {
         btn.disabled = false;
         btn.textContent = 'Finalizar Pedido';
