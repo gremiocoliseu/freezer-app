@@ -77,7 +77,15 @@
 
       <!-- Pix -->
       <div class="bg-white rounded-xl p-4 border border-gray-300 mb-4">
-        <p class="text-sm font-semibold text-gray-700 mb-2">
+   <h3 class="font-semibold text-gray-900 text-lg">
+  ${product.name}
+</h3>
+
+${
+  product.stock <= 0
+    ? '<p class="text-red-600 font-bold text-sm">ESGOTADO</p>'
+    : ''
+}
           Chave Pix
         </p>
         <div class="flex gap-2">
@@ -111,12 +119,7 @@
   <script>
     const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyWkQh5LK6Sic0WKwhIulyV75P2NHs3hw1cklRJHYF8HvXz5T_Fpc3Vr8T8uQNVsb0LFg/exec';
 
-    const products = [
-      { id: 'energetico', name: 'Energético', price: 10 },
-      { id: 'refrigerante', name: 'Refrigerante', price: 5 },
-      { id: 'isotonico', name: 'Isotônico', price: 5.50 },
-      { id: 'whey', name: 'Whey', price: 6 }
-    ];
+    const products = JSON.parse(localStorage.getItem('estoque')) || [];
 
     const quantities = {
       energetico: 0,
