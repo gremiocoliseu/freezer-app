@@ -9,18 +9,29 @@ const quantities = {};
 
 async function loadProducts() {
 
-  const response =
-    await fetch(APPS_SCRIPT_URL);
+  try {
 
-  products =
-    await response.json();
+    const response =
+      await fetch(APPS_SCRIPT_URL);
 
-  products.forEach(product => {
-    quantities[product.id] = 0;
-  });
+    products =
+      await response.json();
 
-  renderProducts();
-  updateTotals();
+    products.forEach(product => {
+      quantities[product.id] = 0;
+    });
+
+    renderProducts();
+    updateTotals();
+
+  } catch (error) {
+
+    console.error(error);
+
+    alert('Erro ao carregar estoque');
+
+  }
+
 }
 
 function updateQuantity(productId, change) {
@@ -56,6 +67,10 @@ function setQuantity(productId, value) {
     quantidade = product.stock;
   }
 
+  if (quantidade < 0) {
+    quantidade = 0;
+  }
+
   quantities[productId] =
     quantidade;
 
@@ -77,10 +92,12 @@ function updateTotals() {
 
   const total =
     products.reduce((sum, p) => {
+
       return sum + (
         p.price *
         quantities[p.id]
       );
+
     }, 0);
 
   document.getElementById('totalDisplay').textContent =
@@ -174,6 +191,28 @@ function renderProducts() {
   `).join('');
 }
 
+document.getElementById('copyBtn')
+.addEventListener('click', () => {
+
+  const pixKey =
+    document.getElementById('pixKey').value;
+
+  navigator.clipboard.writeText(pixKey)
+    .then(() => {
+
+      const btn =
+        document.getElementById('copyBtn');
+
+      btn.textContent = 'Copiado!';
+
+      setTimeout(() => {
+        btn.textContent = 'Copiar';
+      }, 2000);
+
+    });
+
+});
+
 document.getElementById('finalizarBtn')
 .addEventListener('click', async () => {
 
@@ -182,13 +221,36 @@ document.getElementById('finalizarBtn')
     .value
     .trim();
 
+  if (!nome) {
+
+    alert('Informe seu nome');
+
+    return;
+  }
+
   const total =
     products.reduce((sum, p) => {
+
       return sum + (
         p.price *
         quantities[p.id]
       );
+
     }, 0);
+
+  if (total === 0) {
+
+    alert('Adicione produtos');
+
+    return;
+  }
+
+  const btn =
+    document.getElementById('finalizarBtn');
+
+  btn.disabled = true;
+
+  btn.textContent = 'Enviando...';
 
   const pedido = {
     nome,
@@ -196,17 +258,37 @@ document.getElementById('finalizarBtn')
     total
   };
 
-  await fetch(APPS_SCRIPT_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'text/plain'
-    },
-    body: JSON.stringify(pedido)
-  });
+  try {
 
-  alert('Pedido registrado!');
+    await fetch(APPS_SCRIPT_URL, {
 
-  location.reload();
+      method: 'POST',
+
+      headers: {
+        'Content-Type': 'text/plain'
+      },
+
+      body: JSON.stringify(pedido)
+
+    });
+
+    alert('Pedido registrado!');
+
+    location.reload();
+
+  } catch (error) {
+
+    console.error(error);
+
+    alert('Erro ao registrar pedido');
+
+  } finally {
+
+    btn.disabled = false;
+
+    btn.textContent = 'Finalizar Pedido';
+
+  }
 
 });
 
