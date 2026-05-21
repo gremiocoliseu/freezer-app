@@ -1,393 +1,215 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Freezer Coliseu - Autoatendimento</title>
+<script>
 
-  <script src="https://cdn.tailwindcss.com"></script>
+const APPS_SCRIPT_URL =
+'https://script.google.com/macros/s/SEU_SCRIPT/exec';
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+let products = [];
 
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+const quantities = {};
 
-  <style>
-    body {
-      font-family: 'Montserrat', system-ui, -apple-system, sans-serif;
-    }
-  </style>
-</head>
+async function loadProducts() {
 
-<body class="min-h-screen bg-gradient-to-br from-neutral-900 to-black p-4">
+  const response =
+    await fetch(APPS_SCRIPT_URL);
 
-  <div class="max-w-md mx-auto bg-white rounded-2xl shadow-xl overflow-hidden">
+  products =
+    await response.json();
 
-    <!-- Header -->
-    <div class="bg-black p-6 text-white border-b-4 border-yellow-600">
+  products.forEach(product => {
+    quantities[product.id] = 0;
+  });
 
-      <div class="flex items-center gap-4">
+  renderProducts();
+  updateTotals();
+}
 
-        <img
-          src="https://raw.githubusercontent.com/gremiocoliseu/freezer-app/main/logo-grec-coliseu.png.jpeg"
-          alt="GREC Coliseu"
-          class="w-14 h-14 object-contain"
-        />
+function updateQuantity(productId, change) {
+
+  const product =
+    products.find(p => p.id === productId);
+
+  const novaQuantidade =
+    quantities[productId] + change;
+
+  if (novaQuantidade < 0) return;
+
+  if (novaQuantidade > product.stock) return;
+
+  quantities[productId] =
+    novaQuantidade;
+
+  document.getElementById(`qty-${productId}`).value =
+    quantities[productId];
+
+  updateTotals();
+}
+
+function setQuantity(productId, value) {
+
+  const product =
+    products.find(p => p.id === productId);
+
+  let quantidade =
+    parseInt(value) || 0;
+
+  if (quantidade > product.stock) {
+    quantidade = product.stock;
+  }
+
+  quantities[productId] =
+    quantidade;
+
+  updateTotals();
+}
+
+function updateTotals() {
+
+  products.forEach(product => {
+
+    const subtotal =
+      product.price *
+      quantities[product.id];
+
+    document.getElementById(`subtotal-${product.id}`).textContent =
+      `R$ ${subtotal.toFixed(2)}`;
+
+  });
+
+  const total =
+    products.reduce((sum, p) => {
+      return sum + (
+        p.price *
+        quantities[p.id]
+      );
+    }, 0);
+
+  document.getElementById('totalDisplay').textContent =
+    `R$ ${total.toFixed(2)}`;
+
+  document.getElementById('finalizarBtn').disabled =
+    total === 0;
+}
+
+function renderProducts() {
+
+  const container =
+    document.getElementById('products');
+
+  container.innerHTML =
+    products.map(product => `
+
+    <div class="bg-gray-50 rounded-xl p-4 border border-gray-300">
+
+      <div class="flex justify-between items-start mb-3">
 
         <div>
-          <h1 class="text-xl font-semibold tracking-widest uppercase">
-            Freezer Coliseu
-          </h1>
 
-          <p class="text-yellow-500 text-sm tracking-wide">
-            Autoatendimento
+          <h3 class="font-semibold text-gray-900 text-lg">
+            ${product.name}
+          </h3>
+
+          ${
+            product.stock <= 0
+            ? '<p class="text-red-600 font-bold text-sm">ESGOTADO</p>'
+            : ''
+          }
+
+          <p class="text-yellow-600 font-medium">
+            R$ ${product.price.toFixed(2)}
           </p>
+
+          <p class="text-sm text-gray-500 mt-1">
+            Estoque: ${product.stock}
+          </p>
+
+        </div>
+
+        <div class="text-right">
+
+          <p class="text-sm text-gray-500">
+            Subtotal
+          </p>
+
+          <p
+            id="subtotal-${product.id}"
+            class="font-bold text-gray-900"
+          >
+            R$ 0,00
+          </p>
+
         </div>
 
       </div>
 
-    </div>
+      <div class="flex items-center gap-3">
 
-    <!-- Produtos -->
-    <div id="products" class="p-6 space-y-4"></div>
-
-    <!-- Total -->
-    <div class="bg-gradient-to-r from-gray-50 to-gray-100 p-6 border-t border-gray-200">
-
-      <div class="flex justify-between items-center mb-4">
-
-        <span class="text-lg font-semibold text-gray-800">
-          Total a pagar
-        </span>
-
-        <span
-          id="totalDisplay"
-          class="text-3xl font-semibold tabular-nums text-yellow-600"
+        <button
+          onclick="updateQuantity('${product.id}', -1)"
+          class="w-10 h-10 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold text-xl flex items-center justify-center"
         >
-          R$ 0,00
-        </span>
-
-      </div>
-
-      <!-- Nome -->
-      <div class="bg-white rounded-xl p-4 border border-gray-300 mb-4">
-
-        <p class="text-sm font-semibold text-gray-700 mb-2">
-          Seu nome
-        </p>
+          −
+        </button>
 
         <input
-          type="text"
-          id="customerName"
-          placeholder="Digite seu nome"
-          class="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-gray-800 text-sm focus:border-yellow-600 focus:outline-none"
+          type="number"
+          id="qty-${product.id}"
+          value="0"
+          min="0"
+          max="${product.stock}"
+          onchange="setQuantity('${product.id}', this.value)"
+          class="flex-1 text-center text-xl font-semibold border-2 border-gray-300 rounded-lg py-2"
         />
 
-      </div>
-
-      <!-- Pix -->
-      <div class="bg-white rounded-xl p-4 border border-gray-300 mb-4">
-
-        <p class="text-sm font-semibold text-gray-700 mb-2">
-          Chave Pix
-        </p>
-
-        <div class="flex gap-2">
-
-          <input
-            type="text"
-            id="pixKey"
-            value="52782699000192"
-            readonly
-            class="flex-1 bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-gray-800 font-mono text-sm"
-          />
-
-          <button
-            id="copyBtn"
-            class="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-black rounded-lg font-semibold transition-colors"
-          >
-            Copiar
-          </button>
-
-        </div>
+        <button
+          onclick="updateQuantity('${product.id}', 1)"
+          class="w-10 h-10 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold text-xl flex items-center justify-center"
+        >
+          +
+        </button>
 
       </div>
-
-      <!-- Finalizar -->
-      <button
-        id="finalizarBtn"
-        class="w-full bg-gradient-to-r from-yellow-600 to-yellow-700 hover:from-yellow-700 hover:to-yellow-800 disabled:from-gray-400 disabled:to-gray-400 text-black font-bold py-4 rounded-xl text-lg transition-all shadow-lg disabled:cursor-not-allowed"
-      >
-        Finalizar Pedido
-      </button>
 
     </div>
 
-  </div>
-
-  <script>
-
-    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyWkQh5LK6Sic0WKwhIulyV75P2NHs3hw1cklRJHYF8HvXz5T_Fpc3Vr8T8uQNVsb0LFg/exec';
-
-    // PRODUTOS VINDOS DO ESTOQUE
-    const products = JSON.parse(localStorage.getItem('estoque')) || [];
-
-    // QUANTIDADES
-    const quantities = {};
-
-    products.forEach(product => {
-      quantities[product.id] = 0;
-    });
-
-    // ATUALIZAR QUANTIDADE
-    function updateQuantity(productId, change) {
-
-      const product = products.find(p => p.id === productId);
-
-      if (!product) return;
-
-      const novaQuantidade = quantities[productId] + change;
-
-      if (novaQuantidade < 0) return;
-
-      if (novaQuantidade > product.stock) return;
-
-      quantities[productId] = novaQuantidade;
-
-      document.getElementById(`qty-${productId}`).value =
-        quantities[productId];
-
-      updateTotals();
-    }
-
-    // DEFINIR QUANTIDADE
-    function setQuantity(productId, value) {
-
-      const product = products.find(p => p.id === productId);
-
-      let quantidade = parseInt(value) || 0;
-
-      if (quantidade > product.stock) {
-        quantidade = product.stock;
-      }
-
-      if (quantidade < 0) {
-        quantidade = 0;
-      }
-
-      quantities[productId] = quantidade;
-
-      updateTotals();
-    }
-
-    // TOTAL
-    function updateTotals() {
-
-      products.forEach(product => {
-
-        const subtotal =
-          product.price * quantities[product.id];
-
-        document.getElementById(`subtotal-${product.id}`).textContent =
-          `R$ ${subtotal.toFixed(2)}`;
-
-      });
-
-      const total = products.reduce((sum, p) => {
-        return sum + (p.price * quantities[p.id]);
-      }, 0);
-
-      document.getElementById('totalDisplay').textContent =
-        `R$ ${total.toFixed(2)}`;
-
-      document.getElementById('finalizarBtn').disabled =
-        total === 0;
-    }
-
-    // RENDERIZAR
-    function renderProducts() {
-
-      const container = document.getElementById('products');
-
-      container.innerHTML = products.map(product => `
-
-        <div class="bg-gray-50 rounded-xl p-4 border border-gray-300">
-
-          <div class="flex justify-between items-start mb-3">
-
-            <div>
-
-              <h3 class="font-semibold text-gray-900 text-lg">
-                ${product.name}
-              </h3>
-
-              ${
-                product.stock <= 0
-                ? '<p class="text-red-600 font-bold text-sm">ESGOTADO</p>'
-                : ''
-              }
-
-              <p class="text-yellow-600 font-medium">
-                R$ ${product.price.toFixed(2)}
-              </p>
-
-              <p class="text-sm text-gray-500 mt-1">
-                Estoque: ${product.stock}
-              </p>
-
-            </div>
-
-            <div class="text-right">
-
-              <p class="text-sm text-gray-500">
-                Subtotal
-              </p>
-
-              <p
-                id="subtotal-${product.id}"
-                class="font-bold text-gray-900"
-              >
-                R$ 0,00
-              </p>
-
-            </div>
-
-          </div>
-
-          <div class="flex items-center gap-3">
-
-            <button
-              onclick="updateQuantity('${product.id}', -1)"
-              class="w-10 h-10 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold text-xl flex items-center justify-center"
-            >
-              −
-            </button>
-
-            <input
-              type="number"
-              id="qty-${product.id}"
-              value="0"
-              min="0"
-              max="${product.stock}"
-              onchange="setQuantity('${product.id}', this.value)"
-              class="flex-1 text-center text-xl font-semibold border-2 border-gray-300 rounded-lg py-2 focus:border-yellow-600 focus:outline-none"
-            />
-
-            <button
-              onclick="
-              if(quantities['${product.id}'] < ${product.stock}) {
-                updateQuantity('${product.id}', 1)
-              }
-              "
-              class="w-10 h-10 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold text-xl flex items-center justify-center"
-            >
-              +
-            </button>
-
-          </div>
-
-        </div>
-
-      `).join('');
-    }
-
-    // COPIAR PIX
-    document.getElementById('copyBtn').addEventListener('click', () => {
-
-      const pixKey =
-        document.getElementById('pixKey').value;
-
-      navigator.clipboard.writeText(pixKey).then(() => {
-
-        const btn =
-          document.getElementById('copyBtn');
-
-        btn.textContent = 'Copiado!';
-
-        setTimeout(() => {
-          btn.textContent = 'Copiar';
-        }, 2000);
-
-      });
-
-    });
-
-    // FINALIZAR
-    document.getElementById('finalizarBtn').addEventListener('click', async () => {
-
-      const nome =
-        document.getElementById('customerName').value.trim();
-
-      const total = products.reduce((sum, p) => {
-        return sum + (p.price * quantities[p.id]);
-      }, 0);
-
-      if (!nome) {
-        alert('Informe seu nome');
-        return;
-      }
-
-      if (total === 0) {
-        alert('Adicione produtos');
-        return;
-      }
-
-      // BAIXAR ESTOQUE
-      products.forEach(product => {
-        product.stock -= quantities[product.id];
-      });
-
-      localStorage.setItem('estoque', JSON.stringify(products));
-
-      const btn =
-        document.getElementById('finalizarBtn');
-
-      btn.disabled = true;
-
-      btn.textContent = 'Enviando...';
-
-      const pedido = {
-        timestamp: new Date().toISOString(),
-        nome,
-        produtos: quantities,
-        total
-      };
-
-      try {
-
-        await fetch(APPS_SCRIPT_URL, {
-          method: 'POST',
-          mode: 'cors',
-          headers: {
-            'Content-Type': 'text/plain'
-          },
-          body: JSON.stringify(pedido)
-        });
-
-        alert('Pedido registrado com sucesso!');
-
-        location.reload();
-
-      } catch (error) {
-
-        console.error(error);
-
-        alert('Erro ao enviar pedido');
-
-      } finally {
-
-        btn.disabled = false;
-
-        btn.textContent = 'Finalizar Pedido';
-
-      }
-
-    });
-
-    renderProducts();
-    updateTotals();
-
-  </script>
-
-</body>
-</html>
+  `).join('');
+}
+
+document.getElementById('finalizarBtn')
+.addEventListener('click', async () => {
+
+  const nome =
+    document.getElementById('customerName')
+    .value
+    .trim();
+
+  const total =
+    products.reduce((sum, p) => {
+      return sum + (
+        p.price *
+        quantities[p.id]
+      );
+    }, 0);
+
+  const pedido = {
+    nome,
+    produtos: quantities,
+    total
+  };
+
+  await fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'text/plain'
+    },
+    body: JSON.stringify(pedido)
+  });
+
+  alert('Pedido registrado!');
+
+  location.reload();
+
+});
+
+loadProducts();
+
+</script>
