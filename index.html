@@ -175,35 +175,78 @@
 
     async function loadProducts() {
 
-      try {
+  try {
 
-        const response =
-  await fetch(
-    APPS_SCRIPT_URL + '?nocache=' + Date.now()
-  );
+    const response =
+      await fetch(
+        APPS_SCRIPT_URL +
+        '?nocache=' +
+        Date.now(),
+        {
+          method: 'GET',
+          cache: 'no-store'
+        }
+      );
 
-        products =
-          await response.json();
-
-        products.forEach(product => {
-
-          quantities[product.id] = 0;
-
-        });
-
-        renderProducts();
-
-        updateTotals();
-
-      } catch (error) {
-
-        console.error(error);
-
-        alert('Erro ao carregar estoque');
-
-      }
-
+    if (!response.ok) {
+      throw new Error(
+        'Erro HTTP: ' + response.status
+      );
     }
+
+    const text =
+      await response.text();
+
+    if (!text) {
+      throw new Error(
+        'Resposta vazia'
+      );
+    }
+
+    products =
+      JSON.parse(text);
+
+    if (!Array.isArray(products)) {
+      throw new Error(
+        'JSON inválido'
+      );
+    }
+
+    products.forEach(product => {
+
+      quantities[product.id] = 0;
+
+    });
+
+    renderProducts();
+
+    updateTotals();
+
+  } catch (error) {
+
+    console.error(error);
+
+    document.getElementById('products').innerHTML = `
+
+      <div class="bg-red-100 border border-red-300 text-red-700 rounded-xl p-4 text-center font-semibold">
+
+        Erro ao carregar estoque.
+        <br><br>
+
+        <button
+          onclick="location.reload()"
+          class="bg-red-600 text-white px-4 py-2 rounded-lg"
+        >
+          Tentar novamente
+        </button>
+
+      </div>
+
+    `;
+
+  }
+
+}
 
     // =========================================
     // ALTERAR QUANTIDADE
