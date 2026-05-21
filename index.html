@@ -178,7 +178,9 @@
       try {
 
         const response =
-          await fetch(APPS_SCRIPT_URL);
+  await fetch(
+    APPS_SCRIPT_URL + '?nocache=' + Date.now()
+  );
 
         products =
           await response.json();
